@@ -4,6 +4,9 @@
 #include <stdio.h>
 #pragma warning(disable:4996)
 
+#define _snprintf snprintf
+
+
 struct cell_t;
 struct scheme;
 

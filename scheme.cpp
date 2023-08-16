@@ -8,6 +8,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "scheme.h"
 
 static void gc(scheme *sc, cell_t* a, cell_t* b);
@@ -202,6 +203,17 @@ static const char *charnames[32]={
 	"rs",
 	"us"
 };
+
+static int stricmp(const char *name, const char *string) {
+    //比较两个字符串是否相等，忽略大小写
+     //相等返回0，不相等返回非0
+    for(; *name && *string; name++, string++) {
+        if (tolower(*name) != tolower(*string)) {
+            return *name - *string;
+        }
+    }
+    return 0;
+}
 
 static int is_ascii_name(const char *name, int *pc) {
 	for(int i=0; i<32; i++) {
@@ -1192,6 +1204,17 @@ static void printatom(scheme *sc, cell_t* l, int f) {
 	write_string(sc,p);
 }
 
+static const char *strlwr(char *q) {
+    //将字符串转换为小写
+    char *p = q;
+    while (*p) {
+        *p = tolower(*p);
+        p++;
+    }
+    return q;
+}
+
+
 /* make symbol or number atom from string */
 static cell_t* mk_atom_from_string(scheme *sc, char *q) {
 	char*p=q;
@@ -1537,7 +1560,8 @@ E2:
 	if (is_atom(p))
 		goto E6;
 	/* E4: down car */
-	cell_t* q = car(p);
+    cell_t *q;
+    q = car(p);
 	if (q && !is_mark(q)) {
 		setatom(p);  /* a note that we have moved car */
 		car(p) = t;
@@ -3068,6 +3092,16 @@ op_code_info g_dispatch_table[]= {
 	{ 0 }
 };
 
+char *getOpName(opcode op) {
+    int i;
+#define _OP_DEF(A,B,C,D,E,OP) case OP: return #OP;
+
+    switch (op) {
+#include "opdefines.h"
+    }
+    return "ILLEGAL!";
+}
+
 static const char *proc_name(cell_t* x) {
 	int n=proc_value(x);
 	const char *name=g_dispatch_table[n].name;
@@ -3207,6 +3241,10 @@ static void eval_cycle(scheme *sc, opcode op) {
 			if(error_helper(sc,msg,0)==&g_nil) return;
 		}
 		op_code_info *pcd=g_dispatch_table+sc->op;
+        char strbuff[1024];
+        sprintf(strbuff, "eval_cycle: %s op:%d\n", getOpName(static_cast<opcode>(sc->op)), sc->op);
+//        write(2, strbuff, strlen(strbuff));
+
 		if (pcd->func(sc, (opcode)sc->op) == &g_nil) return;
 	}
 }
